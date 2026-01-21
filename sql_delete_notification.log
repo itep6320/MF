@@ -1,0 +1,49 @@
+2025-11-08 12:25:29 | REFUSED: invalid CSRF for user_id=1
+2025-11-08 12:25:45 | REFUSED: invalid CSRF for user_id=1
+2025-11-08 12:31:47 | REQUEST: user_id=1 wants to delete note_id=18
+2025-11-08 12:31:47 | FOUND: note_id=18 owner_id=1 | current_user=1 | admin=1
+2025-11-08 12:31:47 | SUCCESS: deleted note_id=18
+2025-11-08 12:31:47 | REDIRECT: returning to https://pablods.synology.me/mf/index.php
+2025-11-08 22:00:44 | REFUSED: invalid CSRF for user_id=1
+2025-11-08 22:00:54 | REFUSED: invalid CSRF for user_id=1
+2025-11-08 22:14:10 | REQUEST: user_id=1 wants to delete note_id=22
+2025-11-08 22:14:10 | FOUND: note_id=22 owner_id=1 | current_user=1 | admin=1
+2025-11-08 22:14:10 | SUCCESS: deleted note_id=22
+2025-11-08 22:14:10 | REDIRECT: returning to https://pablods.synology.me/mf/index.php
+2025-11-08 22:31:33 | REFUSED: invalid CSRF for user_id=1
+2025-11-08 22:32:57 | REQUEST: user_id=1 wants to delete note_id=23
+2025-11-08 22:32:57 | FOUND: note_id=23 owner_id=1 | current_user=1 | admin=1
+2025-11-08 22:32:57 | SUCCESS: deleted note_id=23
+2025-11-08 22:32:57 | REDIRECT: returning to https://pablods.synology.me/mf/film.php?id=491
+2025-11-30 02:42:59 | REQUEST: user_id=1 wants to delete note_id=29
+2025-11-30 02:42:59 | FOUND: note_id=29 owner_id=3 | current_user=1 | admin=1
+2025-11-30 02:43:00 | SUCCESS: deleted note_id=29
+2025-11-30 02:43:00 | REDIRECT: returning to https://pablods.synology.me/mf/index.php
+2025-12-15 23:05:04 | REQUEST: user_id=3 wants to delete note_id=26
+2025-12-15 23:05:04 | FOUND: note_id=26 owner_id=3 | current_user=3 | admin=1
+2025-12-15 23:05:04 | SUCCESS: deleted note_id=26
+2025-12-15 23:05:04 | REDIRECT: returning to https://pablods.synology.me/mf/film.php?id=391
+2026-01-09 17:51:54 | REQUEST: user_id=1 wants to delete note_id=33
+2026-01-09 17:51:54 | FOUND: note_id=33 owner_id=1 | current_user=1 | admin=1
+2026-01-09 17:51:54 | SUCCESS: deleted note_id=33
+2026-01-09 17:51:54 | REDIRECT: returning to https://pablods.synology.me/mf/index.php
+2026-01-09 17:51:59 | REQUEST: user_id=1 wants to delete note_id=28
+2026-01-09 17:51:59 | FOUND: note_id=28 owner_id=3 | current_user=1 | admin=1
+2026-01-09 17:51:59 | SUCCESS: deleted note_id=28
+2026-01-09 17:51:59 | REDIRECT: returning to https://pablods.synology.me/mf/index.php
+2026-01-09 17:52:05 | REQUEST: user_id=1 wants to delete note_id=20
+2026-01-09 17:52:05 | FOUND: note_id=20 owner_id=1 | current_user=1 | admin=1
+2026-01-09 17:52:05 | SUCCESS: deleted note_id=20
+2026-01-09 17:52:05 | REDIRECT: returning to https://pablods.synology.me/mf/index.php
+2026-01-15 19:41:50 | REQUEST: user_id=1 wants to delete note_id=72
+2026-01-15 19:41:50 | FOUND: note_id=72 owner_id=1 | current_user=1 | admin=1
+2026-01-15 19:41:50 | SUCCESS: deleted note_id=72
+2026-01-15 19:41:50 | REDIRECT: returning to https://pablods.synology.me/mf/index.php
+2026-01-15 19:41:53 | REQUEST: user_id=1 wants to delete note_id=39
+2026-01-15 19:41:53 | FOUND: note_id=39 owner_id=1 | current_user=1 | admin=1
+2026-01-15 19:41:53 | SUCCESS: deleted note_id=39
+2026-01-15 19:41:53 | REDIRECT: returning to https://pablods.synology.me/mf/index.php
+2026-01-15 22:06:35 | REQUEST: user_id=3 wants to delete note_id=21
+2026-01-15 22:06:35 | FOUND: note_id=21 owner_id=1 | current_user=3 | admin=1
+2026-01-15 22:06:35 | SUCCESS: deleted note_id=21
+2026-01-15 22:06:35 | REDIRECT: returning to https://pablods.synology.me/mf/film.php?id=1042
