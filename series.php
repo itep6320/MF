@@ -198,15 +198,9 @@ if (!empty($serie['chemin'])) {
                         <div class="hidden">
                             <?php foreach ($eps as $ep): ?>
                                 <?php
-                                $videoPath = $ep['chemin'] ?? '';
-                                $mime = @mime_content_type($videoPath);
-                                $token = generate_episode_video_token(current_user_id(), $ep['id']);
-                                $canStream = false;
-
-                                if ($videoPath && file_exists($videoPath)) {
-                                    $mime = @mime_content_type($videoPath);
-                                    $canStream = ($mime === 'video/mp4');
-                                }
+                                $exists = (bool)$ep['fichier_existe'];
+                                $type = $ep['video_type'] ?? '';
+                                $token  = generate_episode_video_token(current_user_id(), $ep['id']);
                                 ?>
                                 <div class="border-t p-3 hover:bg-gray-50" data-episode-id="<?= $ep['id'] ?>">
                                     <div class="flex justify-between items-start gap-3">
@@ -221,14 +215,16 @@ if (!empty($serie['chemin'])) {
                                                 spellcheck="false"><?= e($ep['description_episode'] ?: 'Aucune description') ?></div>
                                             <!-- Formate du fichier -->
                                             <div class="mt-1 flex gap-3 text-sm">
-                                                <span class="format-badge"><?= htmlspecialchars($mime) ?></span>
+                                                <?php if ($type): ?>
+                                                    <span class="format-badge"><?= strtoupper($type) ?></span>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
 
                                         <div class="mt-1 flex gap-3 text-sm">
-                                            <?php if ($videoPath && file_exists($videoPath)): ?>
+                                            <?php if ($exists): ?>
 
-                                                <?php if ($mime === 'video/mp4'): ?>
+                                                <?php if ($type === 'mp4'): ?>
                                                     <a href="stream_episode_mp4.php?id=<?= $ep['id'] ?>" target="_blank"
                                                         class="text-blue-600 hover:underline">
                                                         ▶️ Regarder
@@ -240,7 +236,6 @@ if (!empty($serie['chemin'])) {
                                                     </a>
                                                 <?php endif; ?>
 
-                                                <!-- Téléchargement -->
                                                 <a href="download_episode.php?id=<?= $ep['id'] ?>"
                                                     class="text-green-600 hover:underline">
                                                     ⬇️ Télécharger
