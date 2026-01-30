@@ -41,10 +41,10 @@ $commentsStmt = $pdo->prepare('
     SELECT c.*, u.username 
     FROM commentaires c 
     JOIN utilisateurs u ON c.utilisateur_id = u.id 
-    WHERE c.film_id = ? 
+    WHERE c.film_id = ? AND c.type = ?
     ORDER BY c.date_creation DESC
 ');
-$commentsStmt->execute([$id]);
+$commentsStmt->execute([$id, 'film']);
 $comments = $commentsStmt->fetchAll();
 
 // Note utilisateur
@@ -306,7 +306,7 @@ $existingFranchises = $franchisesStmt->fetchAll(PDO::FETCH_COLUMN);
 
                 <!-- Notes -->
                 <h3 class="font-semibold">Notes</h3>
-                <?php $avg = get_average_note($pdo, (int)$film['id']); ?>
+                <?php $avg = get_average_note($pdo, (int)$film['id'], "film"); ?>
                 <div>
                     <strong>Moyenne :</strong>
                     <?= $avg !== null ? $avg . ' / 10' : '—' ?>

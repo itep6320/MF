@@ -8,21 +8,21 @@ function e($s): string
 }
 
 // compute average rating
-function get_average_note(PDO $pdo, int $film_id): ?float
+function get_average_note(PDO $pdo, int $film_id, string $type = 'film'): ?float
 {
     $stmt = $pdo->prepare(
-        'SELECT ROUND(AVG(note), 2) AS avgnote FROM notes WHERE film_id = ?'
+        'SELECT ROUND(AVG(note), 2) AS avgnote FROM notes WHERE film_id = ? AND type = ?'
     );
-    $stmt->execute([$film_id]);
+    $stmt->execute([$film_id, $type]);
     $avg = $stmt->fetchColumn();
     return $avg !== false ? (float)$avg : null;
 }
 
 // fetch user's note
-function get_user_note(PDO $pdo, int $user_id, int $film_id): ?int
+function get_user_note(PDO $pdo, int $user_id, int $film_id, string $type = 'film'): ?int
 {
-    $stmt = $pdo->prepare('SELECT note FROM notes WHERE utilisateur_id = ? AND film_id = ?');
-    $stmt->execute([$user_id, $film_id]);
+    $stmt = $pdo->prepare('SELECT note FROM notes WHERE utilisateur_id = ? AND film_id = ? AND type = ?');
+    $stmt->execute([$user_id, $film_id, $type]);
     $r = $stmt->fetch();
     return $r ? (int)$r['note'] : null;
 }
@@ -77,3 +77,41 @@ function verify_csrf_token(string $token): bool
 {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
+
+// Génération du token épisode
+function generate_episode_video_token($userId, $episodeId)
+{
+    $token = bin2hex(random_bytes(32));
+    $_SESSION['video_tokens'][$token] = [
+        'user_id' => $userId,
+        'episode_id' => $episodeId,
+        'expires' => time() + 10800
+    ];
+    return $token;
+}
+
+
+function cleanEpisodeTitle($episode) {
+    $titre = trim($episode['titre_episode'] ?? '');
+
+    // Pour la saison 0, on enlève un éventuel préfixe "S0E1 — " dans le titre
+    if ((int)$episode['saison'] === 0) {
+        // Supprime un éventuel "S0E1 — " (pattern général SxEy — )
+        $titre = preg_replace('/^S0E\d+\s*—\s*/', '', $titre);
+        
+        // Si titre vide après nettoyage, on essaie d'extraire le nom du fichier
+        if ($titre === '') {
+            $titre = pathinfo($episode['chemin'] ?? '', PATHINFO_FILENAME);
+        }
+        
+        return $titre;
+    }
+
+    // Pour saison > 0, on affiche "E<numéro> — <titre>" si titre dispo sinon nom fichier
+    if ($titre === '') {
+        $titre = pathinfo($episode['chemin'] ?? '', PATHINFO_FILENAME);
+    }
+    return 'E' . $episode['numero_episode'] . ' — ' . $titre;
+}
+
+

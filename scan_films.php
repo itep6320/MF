@@ -13,17 +13,19 @@ header('Content-Type: text/plain; charset=utf-8');
 // ⚙️ Chargement du chemin depuis .env
 $envPath = __DIR__ . '/../.env-mf';
 if (!file_exists($envPath)) {
-    $envPath = __DIR__ . '/.env-mf'; // fallback to local .env
+    $envPath = __DIR__ . '/.env-mf'; 
 }
 $env = parse_ini_file($envPath);
-$filmsPath = $env['FILMS_PATH'] ?? '/volume2/Films';
-$allowed = ['mp4','mkv','avi','mov','wmv','m4v'];
+$rootPath = $env['FILMS_PATH'] ?? '/volume2/Films';
+
+// 🎥 Extensions vidéo autorisées
+$videoExtensions = ['mp4','mkv','avi','mov','wmv','m4v'];
 
 // 🔧 Configuration TMDb
 $tmdbApiKey = 'f75887c1f49c99a3abe4ff8a9c46c919'; // ⚠️ Remplace par ta clé TMDb
 $tmdbBaseUrl = 'https://api.themoviedb.org/3';
 
-// --- Fonction utilitaire TMDb -----------------------------------
+// Fonctions utilitaires
 function fetchFromTMDb($url): ?array {
     $response = @file_get_contents($url);
     if (!$response) return null;
@@ -73,7 +75,7 @@ foreach ($existingStmt->fetchAll() as $row) {
     $existing[$row['chemin']] = ['id' => $row['id'], 'titre' => $row['titre']];
 }
 
-$rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($filmsPath));
+$rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($rootPath));
 $inserted = $skipped = $updated = 0;
 $foundFiles = [];
 
@@ -81,7 +83,7 @@ foreach ($rii as $file) {
     if ($file->isDir()) continue;
 
     $ext = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
-    if (!in_array($ext, $allowed)) continue;
+    if (!in_array($ext, $videoExtensions)) continue;
 
     $full = $file->getPathname();
     $foundFiles[] = $full;

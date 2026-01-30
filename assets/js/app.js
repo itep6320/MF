@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', function () {
             btn.disabled = true;
             btn.textContent = 'Scan en cours...';
-            fetch('scan.php')
+            fetch('scan_films.php')
                 .then(res => res.text())
                 .then(data => {
                     alert(data); // ou afficher dans un div dédié
@@ -127,4 +127,21 @@ document.addEventListener('DOMContentLoaded', () => {
     noteModal?.addEventListener('click', e => {
         if (e.target === noteModal) noteModal.classList.add('hidden');
     });
+});
+
+/* ======================================================
+   faire apparaître et disparaître l’alerte
+====================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+    const wrapper = document.getElementById('alert-notice');
+    if (wrapper) {
+        const alertEl = wrapper.firstElementChild;
+        // Faire apparaître
+        alertEl.classList.add('opacity-100');
+        // Disparaît après 4 secondes
+        setTimeout(() => {
+            alertEl.classList.remove('opacity-100');
+            alertEl.classList.add('opacity-0');
+        }, 4000);
+    }
 });

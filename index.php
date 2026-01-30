@@ -74,8 +74,8 @@ $totalPages = ceil($total / $perPage);
 
 // ✅ AJOUT — filtre films sans mise à jour
 $orderFields = [
-    1 => 'date_ajout DESC, titre ASC',
-    0 => 'annee DESC, titre ASC'
+  1 => 'date_ajout DESC, titre ASC',
+  0 => 'annee DESC, titre ASC'
 ];
 
 $sql .= ' ORDER BY ' . $orderFields[(int)$noUpdate] . '
@@ -109,14 +109,29 @@ if (isset($_GET['debug'])) {
 </head>
 
 <body class="min-h-screen bg-gray-100">
-  <header class="p-3 bg-white shadow sticky top-0 z-10">
-    <div class="container mx-auto flex items-center justify-between">
-      <h1 class="text-xl font-bold">
-        🎬 Mes Films
-        <span class="text-gray-500 text-sm">
-          (<?= intval($totalFilms) ?> total • <?= intval($total) ?> filtrés)
-        </span>
-      </h1>
+  <!-- Message d'erreur -->
+  <?php if (!empty($_SESSION['notice'])): ?>
+    <div id="alert-notice"
+      class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
+      <div class="bg-yellow-400 text-yellow-900 px-6 py-4 rounded shadow-lg text-center max-w-lg break-words opacity-0 transition-opacity duration-500">
+        <?= nl2br(htmlspecialchars($_SESSION['notice'])) ?>
+      </div>
+    </div>
+  <?php unset($_SESSION['notice']);
+  endif; ?>
+
+    <header class="p-3 bg-white shadow sticky top-0 z-10">
+        <div class="container mx-auto flex items-center justify-between">
+            <h1 class="text-xl font-bold">
+              <a href="index.php">🎬 Mes Films</a>
+                
+                <span class="text-gray-500 text-sm">
+                    (<?= $totalFilms ?> total • <?= $total ?> filtrées)
+                </span>
+            </h1>
+            <h3>
+                <a href="index_series.php">📺 Mes Séries</a>
+            </h3>
 
       <div class="flex items-center gap-3 text-sm">
         <?php if (is_logged_in()): ?>

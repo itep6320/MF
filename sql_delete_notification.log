@@ -47,3 +47,11 @@
 2026-01-15 22:06:35 | FOUND: note_id=21 owner_id=1 | current_user=3 | admin=1
 2026-01-15 22:06:35 | SUCCESS: deleted note_id=21
 2026-01-15 22:06:35 | REDIRECT: returning to https://pablods.synology.me/mf/film.php?id=1042
+2026-01-22 14:17:12 | REQUEST: user_id=1 wants to delete note_id=83
+2026-01-22 14:17:12 | FOUND: note_id=83 owner_id=3 | current_user=1 | admin=1
+2026-01-22 14:17:12 | SUCCESS: deleted note_id=83
+2026-01-22 14:17:12 | REDIRECT: returning to https://pablods.synology.me/mf/
+2026-01-26 22:17:02 | REQUEST: user_id=1 wants to delete note_id=96
+2026-01-26 22:17:02 | FOUND: note_id=96 owner_id=3 | current_user=1 | admin=1
+2026-01-26 22:17:02 | SUCCESS: deleted note_id=96
+2026-01-26 22:17:02 | REDIRECT: returning to https://pablods.synology.me/mf/film.php?id=1079

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/functions.php';
 
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -13,15 +14,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } elseif ($password !== $password2) {
     $errors[] = 'Les mots de passe ne correspondent pas.';
   } else {
-    // check email
+    // Vérifier email unique
     $stmt = $pdo->prepare('SELECT id FROM utilisateurs WHERE email = ? LIMIT 1');
     $stmt->execute([$email]);
     if ($stmt->fetch()) {
       $errors[] = 'Email déjà utilisé.';
     } else {
       $hash = password_hash($password, PASSWORD_DEFAULT);
-      $stmt = $pdo->prepare('INSERT INTO utilisateurs (email, password_hash, username, actif) VALUES (?, ?, ?, 1)');
-      $stmt->execute([$email, $hash, $username]);
+      $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+      $stmt = $pdo->prepare('INSERT INTO utilisateurs (email, password_hash, username, actif, ip_inscription) VALUES (?, ?, ?, 1, ?)');
+      $stmt->execute([$email, $hash, $username, $ip]);
       header('Location: login.php');
       exit;
     }
@@ -53,11 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button class="mt-3 p-2 bg-green-600 text-white rounded">S'inscrire</button>
     </form>
     <p class="mt-4 text-center">
-      Déjà inscrit ?
-      <a href="login.php"
-        class="inline-block ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
-        Connexion
-      </a>
+      Déjà inscrit ? <a href="login.php" class="inline-block ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Connexion</a>
     </p>
   </main>
 </body>

@@ -48,9 +48,33 @@ $titre = $filmData['title'] ?? 'Titre inconnu';
 $anneeRaw = $filmData['release_date'] ?? null;
 $annee = ($anneeRaw && preg_match('/^\d{4}/', $anneeRaw)) ? (int)substr($anneeRaw, 0, 4) : null;
 
+// Traduction simple des genres en français
+$genreEn = $filmData['genres'] ?? '';
+$genresFR = [
+    'Action' => 'Action',
+    'Adventure' => 'Aventure',
+    'Comedy' => 'Comédie',
+    'Drama' => 'Drame',
+    'Horror' => 'Horreur',
+    'Thriller' => 'Thriller',
+    'Romance' => 'Romance',
+    'Sci-Fi' => 'Science-fiction',
+    'Animation' => 'Animation',
+    'Documentary' => 'Documentaire',
+    'Mystery' => 'Mystère',
+    'Crime' => 'Policier',
+    'Family' => 'Familial',
+    'Fantasy' => 'Fantastique',
+    'Western' => 'Western',
+    'War' => 'Guerre',
+    'Biography' => 'Biographie',
+    'History' => 'Histoire',
+    'Music' => 'Musical',
+    'Sport' => 'Sport'
+];
+
 // Genres
-$genresArray = $filmData['genres'] ?? [];
-$genres = !empty($genresArray) ? implode(', ', array_map(fn($g) => $g['name'], $genresArray)) : 'Genre inconnu';
+$genres = !empty($genresFR) ? implode(', ', array_map(fn($g) => $g['name'], $genresFR)) : 'Genre inconnu';
 
 // Description et traduction
 $description = $filmData['overview'] ?? 'Aucune description disponible';

@@ -48,7 +48,17 @@ $genresFR = [
     'Romance' => 'Romance',
     'Sci-Fi' => 'Science-fiction',
     'Animation' => 'Animation',
-    'Documentary' => 'Documentaire'
+    'Documentary' => 'Documentaire',
+    'Mystery' => 'Mystère',
+    'Crime' => 'Policier',
+    'Family' => 'Familial',
+    'Fantasy' => 'Fantastique',
+    'Western' => 'Western',
+    'War' => 'Guerre',
+    'Biography' => 'Biographie',
+    'History' => 'Histoire',
+    'Music' => 'Musical',
+    'Sport' => 'Sport'
 ];
 
 $genreFR = implode(', ', array_map(function ($g) use ($genresFR) {
