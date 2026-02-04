@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     session_regenerate_id(true);
                     $_SESSION['user_id'] = (int)$user['id'];
                     $_SESSION['username'] = $user['username'];
+                    $_SESSION['admin_level'] = $user['admin'];
                     $_SESSION['last_activity'] = time();
                     // Vérification IP pour accès admin
                     $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';

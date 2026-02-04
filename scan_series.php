@@ -43,8 +43,16 @@ function parseEpisodeInfo(string $filename): array
     $name = strtolower($filename);
 
     $patterns = [
+        // S03E10, S3.E10, S3_E10
         '/s(\d{1,2})[\.\-_ ]?e(\d{1,3})/i',
+
+        // 3x10
         '/(\d{1,2})x(\d{1,3})/i',
+
+        // S3- Ep10, S3 Ep10, S03-Ep010
+        '/s(\d{1,2})[\.\-_ ]*ep?[\.\-_ ]*(\d{1,3})/i',
+
+        // 3.10 ou 3-10 (fallback)
         '/(\d{1,2})[\.\-_ ](\d{1,3})/'
     ];
 
@@ -59,6 +67,7 @@ function parseEpisodeInfo(string $filename): array
 
     return ['saison' => null, 'episode' => null];
 }
+
 
 function cleanEpisodeTitle(string $filename): string
 {

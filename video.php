@@ -1,139 +1,215 @@
 <?php
+session_start();
 require_once __DIR__ . '/functions.php';
 
-// 🔹 Récupération ID vidéo
-$videoId = intval($_GET['id'] ?? 0);
-if ($videoId <= 0) {
-    header('Location: index_videos.php');
+if (!is_logged_in() || !is_admin() || (int)$_SESSION['admin_level'] !== 2) {
+    header('Location: index.php');
     exit;
 }
 
-// 🔹 Charger la vidéo
+$id = intval($_GET['id'] ?? 0);
+if ($id <= 0) {
+    header('Location: videos.php');
+    exit;
+}
+
+/* ==========================
+   Charger la vidéo
+========================== */
 $stmt = $pdo->prepare('SELECT * FROM videos WHERE id = ?');
-$stmt->execute([$videoId]);
+$stmt->execute([$id]);
 $video = $stmt->fetch();
+
 if (!$video) {
-    exit('⚠️ Vidéo introuvable');
+    echo 'Vidéo non trouvée';
+    exit;
 }
 
-// 🔹 Gestion du visuel
-$thumbDir = __DIR__ . '/thumbs/videos';
-$visuel = 'assets/img/no-poster.jpg';
-if (!empty($video['visuel']) && file_exists(__DIR__ . '/' . $video['visuel'])) {
-    $visuel = $video['visuel'];
+/* ==========================
+   Vidéo précédente / suivante
+========================== */
+$prevStmt = $pdo->prepare('SELECT id, titre FROM videos WHERE id < ? ORDER BY id DESC LIMIT 1');
+$prevStmt->execute([$id]);
+$prevVideo = $prevStmt->fetch();
+
+$nextStmt = $pdo->prepare('SELECT id, titre FROM videos WHERE id > ? ORDER BY id ASC LIMIT 1');
+$nextStmt->execute([$id]);
+$nextVideo = $nextStmt->fetch();
+
+/* ==========================
+   CSRF
+========================== */
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// 🔹 Regénération du visuel via ffmpeg si absent
-$ffmpeg = '/usr/local/bin/ffmpeg'; // adapter selon ton Synology
-if (file_exists($ffmpeg) && is_writable($thumbDir)) {
-    $thumbFile = md5($video['chemin']) . '.jpg';
-    $thumbPath = "$thumbDir/$thumbFile";
+/* ==========================
+   Commentaires
+========================== */
+$commentsStmt = $pdo->prepare('
+    SELECT c.*, u.username 
+    FROM commentaires c
+    JOIN utilisateurs u ON u.id = c.utilisateur_id
+    WHERE c.video_id = ? AND c.type = "video"
+    ORDER BY c.date_creation DESC
+');
+$commentsStmt->execute([$id]);
+$comments = $commentsStmt->fetchAll();
 
-    if (!file_exists($thumbPath) || filesize($thumbPath) === 0) {
-        $cmd = "$ffmpeg -y -loglevel error -ss 3 -i " . escapeshellarg($video['chemin']) .
-            " -frames:v 1 -vf scale=320:-1 -q:v 3 " . escapeshellarg($thumbPath);
-        shell_exec($cmd);
-
-        if (file_exists($thumbPath) && filesize($thumbPath) > 0) {
-            $visuel = 'thumbs/videos/' . $thumbFile;
-
-            $upd = $pdo->prepare('UPDATE videos SET visuel = ? WHERE id = ?');
-            $upd->execute([$visuel, $videoId]);
-        }
-    }
+/* ==========================
+   Note utilisateur
+========================== */
+$userNote = null;
+if (is_logged_in()) {
+    $userNote = get_user_note($pdo, current_user_id(), $id, 'video');
 }
 
-// 🔹 Formater la durée
-$durationStr = '';
-if (!empty($video['duree'])) {
-    $h = floor($video['duree'] / 3600);
-    $m = floor(($video['duree'] % 3600) / 60);
-    $s = $video['duree'] % 60;
-    $durationStr = ($h ? $h . 'h ' : '') . ($m ? $m . 'm ' : '') . $s . 's';
+/* ==========================
+   Token vidéo
+========================== */
+function generate_video_token($userId, $videoId)
+{
+    $token = bin2hex(random_bytes(32));
+    $_SESSION['video_tokens'][$token] = [
+        'user_id' => $userId,
+        'video_id' => $videoId,
+        'expires' => time() + 10800
+    ];
+    return $token;
 }
 
+$videoToken = (is_logged_in() && is_admin())
+    ? generate_video_token(current_user_id(), $video['id'])
+    : null;
+
+$videoPath = $video['chemin'];
+$mime = @mime_content_type($videoPath);
 ?>
 <!doctype html>
 <html lang="fr">
-
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="icon" href="assets/img/favicon.ico" type="image/x-icon">
-    <title><?= e($video['titre']) ?> — Mes Vidéos</title>
+    <title><?= e($video['titre']) ?> — Vidéo</title>
     <link href="assets/css/style.css" rel="stylesheet">
 </head>
 
-<body class="min-h-screen bg-gray-100">
+<?php
+$activeMenu = 'videos';
+require 'header.php';
+?>
 
-    <header class="p-3 bg-white shadow sticky top-0 z-10">
-        <div class="container mx-auto flex items-center justify-between">
-            <h1 class="text-xl font-bold">
-                <a href="index_videos.php">🎬 Mes Vidéos</a>
-            </h1>
-            <div class="flex items-center gap-3 text-sm">
-                <?php if (is_logged_in()): ?>
-                    Bonjour <strong><?= e($_SESSION['username']) ?></strong>
-                    <span class="text-gray-400">|</span>
-                    <a href="logout.php" class="text-blue-600 hover:underline">Se déconnecter</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </header>
+<body class="bg-gray-100">
 
-    <main class="container mx-auto p-3">
-        <div class="bg-white rounded shadow p-4 flex flex-col md:flex-row gap-4">
+<main class="container mx-auto p-4">
 
-            <!-- Colonne gauche : visuel + vidéo -->
-            <div class="md:w-1/3 flex-shrink-0">
-                <img src="<?= e($visuel) ?>" alt="<?= e($video['titre']) ?>" class="w-full rounded mb-2">
+    <h1 class="text-2xl font-bold mb-3"><?= e($video['titre']) ?></h1>
 
-                <?php if (!empty($video['chemin']) && file_exists($video['chemin'])): ?>
-                    <?php $mime = mime_content_type($video['chemin']); ?>
-                    <video controls class="w-full rounded mb-2">
-                        <source src="stream_mp4.php?token=<?= $video['chemin'] ?>" type="<?= e($mime) ?>">
-                        Votre navigateur ne supporte pas la lecture vidéo.
-                    </video>
-                <?php endif; ?>
-            </div>
+    <!-- ▶️ PLAYER -->
+    <?php if ($videoToken && is_admin()): ?>
 
-            <!-- Ligne avec Télécharger + Copier l'URL côte à côte -->
-            <div class="flex gap-2 mt-2">
-                <a href="download.php?token=<?= $video['chemin'] ?>"
-                    class="flex-1 p-2 bg-gray-700 text-white rounded text-center hover:bg-gray-800">
-                    Télécharger
-                </a>
+        <?php if ($mime === 'video/mp4'): ?>
+            <video controls class="w-full rounded mb-3" onended="goToNextVideo()">
+                <source src="stream_mp4.php?token=<?= $videoToken ?>" type="video/mp4">
+            </video>
+        <?php else: ?>
+            <video controls class="w-full rounded mb-3">
+                <source src="stream.php?token=<?= $videoToken ?>" type="video/mp4">
+            </video>
+        <?php endif; ?>
 
-                <button id="copy-stream-url"
-                    class="flex-1 p-2 bg-green-600 text-white rounded text-center hover:bg-green-700">
-                    Copier l'URL du streaming
-                </button>
-            </div>
-
-            <!-- Bouton Supprimer en dessous, pleine largeur -->
-            <button id="delete-film-btn"
-                class="mt-4 w-full p-2 bg-red-600 text-white rounded hover:bg-red-700">
-                🗑️ Supprimer ce film
+        <div class="flex gap-2 mb-4">
+            <a href="download.php?token=<?= $videoToken ?>"
+               class="flex-1 bg-gray-700 text-white p-2 rounded text-center">
+                Télécharger
+            </a>
+            <button id="copy-url"
+                class="flex-1 bg-green-600 text-white p-2 rounded">
+                Copier URL
             </button>
-
-            <!-- Colonne droite : infos essentielles -->
-            <div class="md:w-2/3">
-                <h2 class="text-2xl font-bold mb-2"><?= e($video['titre']) ?></h2>
-                <div class="text-gray-600 mb-2">
-                    <strong>Date :</strong> <?= e($video['date']) ?><br>
-                    <strong>Format :</strong> <?= e($video['type']) ?><br>
-                    <?php if ($durationStr): ?>
-                        <strong>Durée :</strong> <?= e($durationStr) ?>
-                    <?php endif; ?>
-                </div>
-                <div class="text-gray-800">
-                    <?= nl2br(e($video['description'])) ?>
-                </div>
-            </div>
-
         </div>
-    </main>
+
+    <?php else: ?>
+        <p class="text-red-600">Connexion administrateur requise pour la lecture.</p>
+    <?php endif; ?>
+
+    <!-- 📝 Description -->
+    <div class="bg-white p-3 rounded shadow mb-4">
+        <?= nl2br(e($video['description'])) ?>
+    </div>
+
+    <!-- ⏮️⏭️ Navigation -->
+    <div class="flex gap-2 mb-4">
+        <?php if ($prevVideo): ?>
+            <a href="video.php?id=<?= $prevVideo['id'] ?>" class="bg-gray-600 text-white p-2 rounded">
+                ⏮️ <?= e($prevVideo['titre']) ?>
+            </a>
+        <?php endif; ?>
+
+        <?php if ($nextVideo): ?>
+            <a href="video.php?id=<?= $nextVideo['id'] ?>" class="bg-blue-600 text-white p-2 rounded">
+                ⏭️ <?= e($nextVideo['titre']) ?>
+            </a>
+        <?php endif; ?>
+    </div>
+
+    <!-- ⭐ Notes -->
+    <h3 class="font-semibold">Notes</h3>
+    <?php $avg = get_average_note($pdo, $video['id'], 'video'); ?>
+    <p>Moyenne : <?= $avg !== null ? $avg . ' / 10' : '—' ?></p>
+
+    <?php if (is_logged_in()): ?>
+        <form method="post" action="rate_video.php" class="mt-2">
+            <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf_token']) ?>">
+            <input type="hidden" name="video_id" value="<?= $video['id'] ?>">
+            <select name="note">
+                <?php for ($i=1;$i<=10;$i++): ?>
+                    <option value="<?= $i ?>" <?= $userNote==$i?'selected':'' ?>>
+                        <?= $i ?>
+                    </option>
+                <?php endfor; ?>
+            </select>
+            <button class="bg-blue-600 text-white px-2 py-1 rounded">OK</button>
+        </form>
+    <?php endif; ?>
+
+    <!-- 💬 Commentaires -->
+    <hr class="my-4">
+    <h3 class="font-semibold">Commentaires</h3>
+
+    <?php if (is_logged_in()): ?>
+        <form method="post" action="add_comment.php">
+            <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf_token']) ?>">
+            <input type="hidden" name="video_id" value="<?= $video['id'] ?>">
+            <textarea name="contenu" class="w-full p-2 border rounded"></textarea>
+            <button class="mt-2 bg-blue-600 text-white p-2 rounded">Envoyer</button>
+        </form>
+    <?php endif; ?>
+
+    <div class="mt-3">
+        <?php foreach ($comments as $c): ?>
+            <div class="bg-white p-2 rounded shadow mb-2">
+                <strong><?= e($c['username']) ?></strong>
+                <div><?= nl2br(e($c['contenu'])) ?></div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
+</main>
+
+<script>
+function goToNextVideo() {
+    <?php if ($nextVideo): ?>
+        location.href = 'video.php?id=<?= $nextVideo['id'] ?>';
+    <?php endif; ?>
+}
+
+document.getElementById('copy-url')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(
+        location.origin + '/stream.php?token=<?= $videoToken ?>'
+    );
+    alert('URL copiée');
+});
+</script>
 
 </body>
-
 </html>

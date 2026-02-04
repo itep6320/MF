@@ -22,6 +22,13 @@ $scanLabel = $scanLabel ?? 'Scan';
                     📺 Mes Séries
                 </a>
             </h1>
+            <?php if (is_logged_in() && is_admin() && (int)$_SESSION['admin_level'] === 2): ?>
+                <h1 class="font-bold">
+                    <a href="index_videos.php" class="<?= $activeMenu === 'videos' ? 'text-blue-600' : '' ?>">
+                        ▶️ Mes Vidéos
+                    </a>
+                </h1>
+            <?php endif; ?>
         </div>
 
         <!-- User / actions -->

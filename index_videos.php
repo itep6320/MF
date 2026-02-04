@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/functions.php';
 
+if (!is_logged_in() || !is_admin() || (int)$_SESSION['admin_level'] !== 2) {
+    header('Location: index.php');
+    exit;
+}
+
 // Compter toutes les vidéos
 $countStmt = $pdo->query('SELECT COUNT(*) FROM videos');
 $totalVideos = $countStmt->fetchColumn();
