@@ -91,19 +91,20 @@ function generate_episode_video_token($userId, $episodeId)
 }
 
 
-function cleanEpisodeTitle($episode) {
+function cleanEpisodeTitle($episode)
+{
     $titre = trim($episode['titre_episode'] ?? '');
 
     // Pour la saison 0, on enlève un éventuel préfixe "S0E1 — " dans le titre
     if ((int)$episode['saison'] === 0) {
         // Supprime un éventuel "S0E1 — " (pattern général SxEy — )
         $titre = preg_replace('/^S0E\d+\s*—\s*/', '', $titre);
-        
+
         // Si titre vide après nettoyage, on essaie d'extraire le nom du fichier
         if ($titre === '') {
             $titre = pathinfo($episode['chemin'] ?? '', PATHINFO_FILENAME);
         }
-        
+
         return $titre;
     }
 
@@ -114,4 +115,7 @@ function cleanEpisodeTitle($episode) {
     return $titre;
 }
 
-
+function truncate($text, $max = 30)
+{
+    return mb_strimwidth($text, 0, $max, '…', 'UTF-8');
+}

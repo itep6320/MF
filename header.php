@@ -1,11 +1,33 @@
 <?php
-// Valeurs par défaut
-$activeMenu = $activeMenu ?? 'films'; // films | series
+// Menu actif : films | series | videos
+$activeMenu = $activeMenu ?? 'films';
+
+// Scan (désactivé par défaut)
 $showScan = $showScan ?? false;
-$scanId = $scanId ?? 'scan-films';
-$scanTitle = $scanTitle ?? 'Scanner les nouveaux films';
-$scanLabel = $scanLabel ?? 'Scan';
+
+// Configuration du scan selon le menu
+switch ($activeMenu) {
+    case 'series':
+        $scanId    = $scanId    ?? 'scan-series';
+        $scanTitle = $scanTitle ?? 'Scanner les nouvelles séries';
+        $scanLabel = $scanLabel ?? 'Scan Séries';
+        break;
+
+    case 'videos':
+        $scanId    = $scanId    ?? 'scan-videos';
+        $scanTitle = $scanTitle ?? 'Scanner les nouvelles vidéos';
+        $scanLabel = $scanLabel ?? 'Scan Vidéos';
+        break;
+
+    case 'films':
+    default:
+        $scanId    = $scanId    ?? 'scan-films';
+        $scanTitle = $scanTitle ?? 'Scanner les nouveaux films';
+        $scanLabel = $scanLabel ?? 'Scan Films';
+        break;
+}
 ?>
+
 <!-- Headear PC -->
 <header class="hidden md:block p-3 bg-white shadow sticky top-0 z-10">
     <div class="container mx-auto flex items-center justify-between">
@@ -34,6 +56,11 @@ $scanLabel = $scanLabel ?? 'Scan';
         <!-- User / actions -->
         <div class="flex items-center gap-3 text-sm">
             <?php if (is_logged_in()): ?>
+                <?php if ($activeMenu === 'films'): ?>
+                    <a href="favoris.php" class="text-yellow-600 font-semibold">★ Favoris</a>
+                    <span class="text-gray-400">|</span>
+                <?php endif; ?>
+
                 <div class="flex items-center gap-1">
                     Bonjour <strong><?= e($_SESSION['username']) ?></strong>
                     <?php if (is_admin()): ?>
@@ -42,10 +69,6 @@ $scanLabel = $scanLabel ?? 'Scan';
                         </span>
                     <?php endif; ?>
                 </div>
-                <?php if ($activeMenu === 'films'): ?>
-                    <span class="text-gray-400">|</span>
-                    <a href="favoris.php" class="text-yellow-600 font-semibold">★ Favoris</a>
-                <?php endif; ?>
                 <span class="text-gray-400">|</span>
 
                 <a href="logout.php" class="text-blue-600 hover:underline">Se déconnecter</a>

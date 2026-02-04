@@ -142,34 +142,62 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-
-function initScanButton(btn, scanId) {
+function initScanButton(btn, scanId, videoElement) {
     if (!btn) return;
 
     const originalLabel = btn.textContent.trim();
 
     btn.addEventListener('click', function () {
-        if (!confirm(`Lancer le scan des ${scanId === 'scan-series' ? 'séries' : 'films'} ?`)) return;
+        let itemLabel;
+        let fetchUrl;
+
+        if (scanId === 'scan-series') {
+            itemLabel = 'séries';
+            fetchUrl = 'scan_series.php';
+        } else if (scanId === 'scan-films') {
+            itemLabel = 'films';
+            fetchUrl = 'scan_films.php';
+        } else if (scanId === 'scan-videos') {
+            itemLabel = 'vidéos';
+            fetchUrl = 'scan_videos.php';
+        } else {
+            alert('Scan non supporté');
+            return;
+        }
+
+        if (!confirm(`Lancer le scan des ${itemLabel} ?`)) return;
 
         btn.disabled = true;
         btn.classList.add('opacity-50', 'cursor-not-allowed');
         btn.innerHTML = '⏳ Scan en cours...';
 
-        fetch(scanId === 'scan-series' ? 'scan_series.php' : 'scan_films.php')
+        if (videoElement) {
+            videoElement.style.display = 'block';
+            videoElement.play();
+        }
+
+        fetch(fetchUrl)
             .then(res => res.text())
             .then(data => {
-                alert('✅ Scan terminé !\n\n' + data);
+                alert(`✅ Scan des ${itemLabel} terminé !\n\n${data}`);
+                if (videoElement) {
+                    videoElement.pause();
+                    videoElement.style.display = 'none';
+                }
                 location.reload();
             })
             .catch(err => {
-                alert('❌ Erreur lors du scan : ' + err.message);
+                alert(`❌ Erreur lors du scan des ${itemLabel} : ${err.message}`);
                 btn.textContent = originalLabel;
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                if (videoElement) {
+                    videoElement.pause();
+                    videoElement.style.display = 'none';
+                }
             });
     });
 }
-
 
 /* ======================================================
    GESTION DU CLAMP (PLUS / MOINS D'INFOS)
