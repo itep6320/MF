@@ -11,7 +11,7 @@ function initTMDbSearch() {
 
     let timeout;
 
-    const listener = function() {
+    const listener = function () {
         clearTimeout(timeout);
         const query = searchInput.value.trim();
 
@@ -25,27 +25,35 @@ function initTMDbSearch() {
             console.log("🔎 Requête TMDb pour :", query);
 
             fetch(`https://api.themoviedb.org/3/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(query)}&language=fr-FR`)
-            .then(res => res.json())
-            .then(data => {
-                console.log("📥 Résultat TMDb :", data);
-                resultsList.innerHTML = '';
+                .then(async r => {
+                    const text = await r.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error("Réponse non JSON :", text);
+                        throw e;
+                    }
+                })
+                .then(data => {
+                    console.log("📥 Résultat TMDb :", data);
+                    resultsList.innerHTML = '';
 
-                if (!data.results || data.results.length === 0) {
-                    resultsList.classList.add('hidden');
-                    return;
-                }
+                    if (!data.results || data.results.length === 0) {
+                        resultsList.classList.add('hidden');
+                        return;
+                    }
 
-                data.results.forEach(f => {
-                    const li = document.createElement('li');
-                    li.textContent = `${f.title} (${f.release_date?.substring(0,4) || 'N/A'})`;
-                    li.className = 'p-2 hover:bg-gray-200 cursor-pointer';
-                    li.addEventListener('click', () => selectFilm_TMDb(f.id));
-                    resultsList.appendChild(li);
-                });
+                    data.results.forEach(f => {
+                        const li = document.createElement('li');
+                        li.textContent = `${f.title} (${f.release_date?.substring(0, 4) || 'N/A'})`;
+                        li.className = 'p-2 hover:bg-gray-200 cursor-pointer';
+                        li.addEventListener('click', () => selectFilm_TMDb(f.id));
+                        resultsList.appendChild(li);
+                    });
 
-                resultsList.classList.remove('hidden');
-            })
-            .catch(err => console.error('Erreur TMDb:', err));
+                    resultsList.classList.remove('hidden');
+                })
+                .catch(err => console.error('Erreur TMDb:', err));
         }, 300);
     };
 
@@ -64,26 +72,26 @@ function selectFilm_TMDb(tmdbID) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: filmId, tmdbID })
     })
-    .then(res => res.json())
-    .then(data => {
-        if (!data.success) {
-            alert('Erreur lors de la mise à jour du film.');
-            return;
-        }
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Erreur lors de la mise à jour du film.');
+                return;
+            }
 
-        const f = data.film;
-        console.log("✅ Film mis à jour depuis TMDb :", f.titre);
+            const f = data.film;
+            console.log("✅ Film mis à jour depuis TMDb :", f.titre);
 
-        // Met à jour le DOM
-        updateFilmDOM(f);
+            // Met à jour le DOM
+            updateFilmDOM(f);
 
-        // Réinitialise la recherche
-        resetSearchUI();
+            // Réinitialise la recherche
+            resetSearchUI();
 
-        // Réactive la recherche proprement
-        initTMDbSearch();
-    })
-    .catch(err => console.error('Erreur MAJ TMDb :', err));
+            // Réactive la recherche proprement
+            initTMDbSearch();
+        })
+        .catch(err => console.error('Erreur MAJ TMDb :', err));
 }
 
 /* ======================================================

@@ -52,7 +52,7 @@ error_log("Code HTTP: $httpCode");
 if ($response === false || $httpCode !== 200) {
     error_log("Erreur: Impossible de récupérer les données TMDb. Code: $httpCode");
     echo json_encode([
-        'success' => false, 
+        'success' => false,
         'error' => 'Épisode non trouvé sur TMDb',
         'debug' => ['http_code' => $httpCode, 'curl_error' => $curlError]
     ]);
@@ -70,8 +70,15 @@ if (json_last_error() !== JSON_ERROR_NONE) {
 error_log("Données épisode: " . print_r($data, true));
 
 // Extraire les informations de l'épisode
-$titreEpisode = $data['name'] ?? '';
-$description = $data['overview'] ?? '';
+$titreEpisode = trim($data['name'] ?? '');
+$description = trim($data['overview'] ?? '');
+
+// Si titre est générique "Episode X" ET description vide, on considère que ce n'est pas un vrai épisode
+if (preg_match('/^[ÉE]pisode\s+\d+$/iu', $titreEpisode) && empty($description)) {
+    error_log("Titre générique détecté sans description, pas de mise à jour");
+    echo json_encode(['success' => false, 'error' => 'Aucun épisode valide trouvé sur TMDb']);
+    exit;
+}
 
 // Traduction de la description si disponible
 $traces = [];
@@ -84,32 +91,30 @@ $stillPath = !empty($data['still_path']) ? $imageBase . $data['still_path'] : nu
 // Mise à jour dans la base de données
 try {
     error_log("Tentative de mise à jour BD épisode: titre=$titreEpisode");
-    
+
     $stmt = $pdo->prepare("
         UPDATE episodes 
         SET titre_episode = ?, description_episode = ?
         WHERE id = ?
     ");
-    
+
     $stmt->execute([$titreEpisode, $descriptionFR, $episodeId]);
-    
+
     error_log("Mise à jour réussie, lignes affectées: " . $stmt->rowCount());
-    
+
     // Récupérer l'épisode mis à jour
     $stmt = $pdo->prepare('SELECT * FROM episodes WHERE id = ?');
     $stmt->execute([$episodeId]);
     $episode = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     error_log("Épisode récupéré: " . print_r($episode, true));
-    
+
     echo json_encode([
         'success' => true,
         'episode' => $episode,
         'still_path' => $stillPath
     ]);
-    
 } catch (PDOException $e) {
     error_log("Erreur PDO: " . $e->getMessage());
     echo json_encode(['success' => false, 'error' => 'Erreur base de données: ' . $e->getMessage()]);
 }
-?>

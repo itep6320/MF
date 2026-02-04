@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Veuillez saisir un email valide.';
     } else {
         // Vérifier si l'utilisateur existe
-        $stmt = $pdo->prepare('SELECT id FROM utilisateurs WHERE email = ? LIMIT 1');
+        $stmt = $pdo->prepare('SELECT * FROM utilisateurs WHERE email = ? LIMIT 1');
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
@@ -36,31 +36,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare('UPDATE utilisateurs SET reset_token = ?, reset_expire = ? WHERE id = ?');
             $stmt->execute([$token, $expire, $user['id']]);
 
-            // Construire le lien de réinitialisation
-            $resetLink = "https://tonsite.com/reset_password.php?token=$token";
+            // Envoi du mail d’activation
+            $lien = 'https://' . $_SERVER['HTTP_HOST'] . '/mf/reset_password.php?token=' . $token;
+            $sujet = "Mot de passe oublié";
+            $contenu = "
+                <p>Bonjour <strong>{$user['username']}</strong>,</p>
+
+                <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+
+                <p>
+                Pour créer un nouveau mot de passe, cliquez sur le lien ci-dessous :
+                </p>
+
+                <p>
+                <a href=\"$lien\">Réinitialiser mon mot de passe</a>
+                </p>
+
+                <p><strong>⚠️ Ce lien est valable pendant 1 heure.</strong></p>
+
+                <p>
+                Si vous n’êtes pas à l’origine de cette demande, vous pouvez ignorer ce message.
+                </p>
+
+                <p>
+                À bientôt,<br>
+                L’équipe support
+                </p>
+            ";
 
             // Envoi du mail
-            $mail = new PHPMailer(true);
             try {
+                $mail = new PHPMailer(true);
                 $mail->isSMTP();
                 $mail->Host       = 'smtp.gmail.com';
                 $mail->SMTPAuth   = true;
                 $mail->Username   = 'thierry.enjalbert@gmail.com';   // ton email Gmail
                 $mail->Password   = 'vndbrfvwalsayahc';             // mot de passe d'application Gmail
-                $mail->SMTPSecure = 'tls';
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = 587;
-                $mail->SMTPDebug  = 0;
 
-                $mail->setFrom('no-reply@tonsite.com', 'Mes Films');
+                $mail->CharSet = 'UTF-8';
+                $mail->Encoding = 'base64';
+
+                $mail->setFrom('no-reply@pablods.synology.me', 'Mes Films');
                 $mail->addAddress($email);
 
                 $mail->isHTML(true);
-                $mail->Subject = 'Réinitialisation de votre mot de passe';
-                $mail->Body    = "Bonjour,<br><br>"
-                    . "Vous avez demandé à réinitialiser votre mot de passe.<br>"
-                    . "Cliquez sur ce lien pour le réinitialiser (valable 1h) :<br>"
-                    . "<a href=\"$resetLink\">$resetLink</a><br><br>"
-                    . "Si vous n'avez pas demandé cette réinitialisation, ignorez ce message.";
+                $mail->Subject = $sujet;
+                $mail->Body    = $contenu;
 
                 $mail->send();
                 $success = 'Si cet email existe, vous recevrez un lien pour réinitialiser le mot de passe.';

@@ -1,1 +1,0 @@
-<FilesMatch "^\.env$">\n  Require all denied\n</FilesMatch>\n

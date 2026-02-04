@@ -47,17 +47,18 @@ header("Pragma: no-cache");
 header("Accept-Ranges: none");
 
 // ✅ Commande FFmpeg optimisée (lecture immédiate)
-$cmd = sprintf(
-    'ffmpeg -loglevel error -i %s ' .
-    '-vcodec libx264 -preset veryfast -tune fastdecode ' .
-    '-acodec aac -b:a 128k ' .
-    '-movflags frag_keyframe+empty_moov ' .
-    '-f mp4 -', 
-    escapeshellarg($path)
-);
+$ffmpeg  = '/var/packages/ffmpeg/target/bin/ffmpeg';
 
-// ✅ Démarre ffmpeg
-$proc = popen($cmd, 'r');
+    if (file_exists($ffmpeg)) {
+        $cmd = "$ffmpeg -loglevel error -i " . escapeshellarg($path) .
+        "-vcodec libx264 -preset veryfast -tune fastdecode " .
+        "-acodec aac -b:a 128k " .
+        "-movflags frag_keyframe+empty_moov " .
+        "-f mp4 -";
+
+        // ✅ Démarre ffmpeg
+        $proc = popen($cmd, 'r');
+    }
 
 if (!$proc) {
     http_response_code(500);

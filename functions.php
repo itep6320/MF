@@ -111,7 +111,7 @@ function cleanEpisodeTitle($episode) {
     if ($titre === '') {
         $titre = pathinfo($episode['chemin'] ?? '', PATHINFO_FILENAME);
     }
-    return 'E' . $episode['numero_episode'] . ' — ' . $titre;
+    return $titre;
 }
 
 

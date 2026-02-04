@@ -66,10 +66,15 @@ if (isset($_SERVER['HTTP_RANGE'])) {
     }
 }
 
+if (isset($_SERVER['HTTP_RANGE'])) {
+    http_response_code(206);
+}
+
 /* =========================
    5. Headers vidéo HTML5
    ========================= */
 header("Content-Type: video/mp4");
+header("Content-Disposition: inline");
 header("Accept-Ranges: bytes");
 header("Content-Length: $length");
 header("Cache-Control: no-cache, no-store, must-revalidate");

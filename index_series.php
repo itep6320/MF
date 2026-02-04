@@ -1,49 +1,49 @@
-<?php
-require_once __DIR__ . '/functions.php';
+0<?php
+    require_once __DIR__ . '/functions.php';
 
-/* =========================
+    /* =========================
    Comptage total séries
 ========================= */
-$countStmt = $pdo->query('SELECT COUNT(*) FROM series');
-$totalSeries = (int)$countStmt->fetchColumn();
+    $countStmt = $pdo->query('SELECT COUNT(*) FROM series');
+    $totalSeries = (int)$countStmt->fetchColumn();
 
-/* =========================
+    /* =========================
    Admins (notifications)
 ========================= */
-$adminStmt = $pdo->query('SELECT id, username FROM utilisateurs WHERE admin = 1');
-$adminUsers = $adminStmt->fetchAll();
+    $adminStmt = $pdo->query('SELECT id, username FROM utilisateurs WHERE admin = 1');
+    $adminUsers = $adminStmt->fetchAll();
 
-/* =========================
+    /* =========================
    Filtres
 ========================= */
-$search   = trim($_GET['q'] ?? '');
-$genre    = trim($_GET['genre'] ?? '');
-$year     = (int)($_GET['year'] ?? 0);
-$noUpdate = isset($_GET['no_update']) ? 1 : 0;
+    $search   = trim($_GET['q'] ?? '');
+    $genre    = trim($_GET['genre'] ?? '');
+    $year     = (int)($_GET['year'] ?? 0);
+    $noUpdate = isset($_GET['no_update']) ? 1 : 0;
 
-$page   = max(1, (int)($_GET['page'] ?? 1));
-$perPage = 24;
-$offset  = ($page - 1) * $perPage;
+    $page   = max(1, (int)($_GET['page'] ?? 1));
+    $perPage = 24;
+    $offset  = ($page - 1) * $perPage;
 
-// 🔹 Décodage des genres (Tagify JSON ou texte simple)
-$genres = [];
-if ($genre !== '') {
-    $decoded = json_decode($genre, true);
-    if (is_array($decoded)) {
-        foreach ($decoded as $item) {
-            if (!empty($item['value'])) {
-                $genres[] = trim($item['value']);
+    // 🔹 Décodage des genres (Tagify JSON ou texte simple)
+    $genres = [];
+    if ($genre !== '') {
+        $decoded = json_decode($genre, true);
+        if (is_array($decoded)) {
+            foreach ($decoded as $item) {
+                if (!empty($item['value'])) {
+                    $genres[] = trim($item['value']);
+                }
             }
+        } else {
+            $genres = array_map('trim', explode(',', $genre));
         }
-    } else {
-        $genres = array_map('trim', explode(',', $genre));
     }
-}
 
-/* =========================
+    /* =========================
    SQL dynamique
 ========================= */
-$sql = "
+    $sql = "
   SELECT 
     s.*,
     COUNT(e.id) AS nb_episodes
@@ -52,51 +52,51 @@ $sql = "
   WHERE 1=1
 ";
 
-$params = [];
+    $params = [];
 
-if ($search !== '') {
-    $sql .= " AND s.titre LIKE ?";
-    $params[] = "%$search%";
-}
-
-if (!empty($genres)) {
-    $likeParts = [];
-    foreach ($genres as $g) {
-        $likeParts[] = "genre LIKE ?";
-        $params[] = "%$g%";
+    if ($search !== '') {
+        $sql .= " AND s.titre LIKE ?";
+        $params[] = "%$search%";
     }
-    $sql .= ' AND (' . implode(' OR ', $likeParts) . ')';
-}
 
-if ($year > 0) {
-    $sql .= " AND s.annee = ?";
-    $params[] = $year;
-}
+    if (!empty($genres)) {
+        $likeParts = [];
+        foreach ($genres as $g) {
+            $likeParts[] = "genre LIKE ?";
+            $params[] = "%$g%";
+        }
+        $sql .= ' AND (' . implode(' OR ', $likeParts) . ')';
+    }
 
-$sql .= " GROUP BY s.id";
+    if ($year > 0) {
+        $sql .= " AND s.annee = ?";
+        $params[] = $year;
+    }
 
-/* =========================
+    $sql .= " GROUP BY s.id";
+
+    /* =========================
    Total filtré
 ========================= */
-$countSql = "SELECT COUNT(*) FROM ($sql) t";
-$countStmt = $pdo->prepare($countSql);
-$countStmt->execute($params);
-$total = (int)$countStmt->fetchColumn();
-$totalPages = max(1, ceil($total / $perPage));
+    $countSql = "SELECT COUNT(*) FROM ($sql) t";
+    $countStmt = $pdo->prepare($countSql);
+    $countStmt->execute($params);
+    $total = (int)$countStmt->fetchColumn();
+    $totalPages = max(1, ceil($total / $perPage));
 
-/* =========================
+    /* =========================
    Ordre
 ========================= */
-$order = $noUpdate
-    ? 's.date_ajout DESC, s.titre ASC'
-    : 's.annee DESC, s.titre ASC';
+    $order = $noUpdate
+        ? 's.date_ajout DESC, s.titre ASC'
+        : 's.annee DESC, s.titre ASC';
 
-$sql .= " ORDER BY $order LIMIT $perPage OFFSET $offset";
+    $sql .= " ORDER BY $order LIMIT $perPage OFFSET $offset";
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$series = $stmt->fetchAll();
-?>
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $series = $stmt->fetchAll();
+    ?>
 <!doctype html>
 <html lang="fr">
 
@@ -110,104 +110,73 @@ $series = $stmt->fetchAll();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
 </head>
 
+<script src="assets/js/app_series.js"></script>
+<script src="assets/js/app.js"></script>
+
+<?php
+$activeMenu = 'series';
+$showScan = true;
+$scanId = 'scan-series';
+$scanTitle = 'Scanner les nouvelles séries';
+$scanLabel = 'Scan';
+
+require 'header.php';
+?>
+
 <body class="min-h-screen bg-gray-100">
-
-    <!-- ================= HEADER ================= -->
-    <header class="p-3 bg-white shadow sticky top-0 z-10">
-        <div class="container mx-auto flex items-center justify-between">
-            <h1 class="text-xl font-bold">
-                <a href="index_series.php">📺 Mes Séries</a>
-                <span class="text-gray-500 text-sm">
-                    (<?= $totalSeries ?> total • <?= $total ?> filtrées)
-                </span>
-            </h1>
-            <h3>
-                <a href="index.php">🎬 Mes Films</a>
-            </h3>
-
-            <div class="flex items-center gap-3 text-sm">
-                <?php if (is_logged_in()): ?>
-                    <div class="flex items-center gap-1">
-                        Bonjour <strong><?= e($_SESSION['username']) ?></strong>
-                        <?php if (is_admin()): ?>
-                            <span class="ml-1 px-2 py-0.5 text-xs bg-red-600 text-white rounded-full">
-                                admin
-                            </span>
-                        <?php endif; ?>
-                    </div>
-
-                    <span class="text-gray-400">|</span>
-                    <a href="logout.php" class="text-blue-600 hover:underline">Se déconnecter</a>
-
-                    <!-- Notifications -->
-                    <div id="notif-wrapper" class="inline relative ml-4">
-                        <button id="notif-btn" class="relative">
-                            🔔
-                            <span id="notif-count" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs px-1 hidden"></span>
-                        </button>
-
-                        <div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-white border shadow-lg rounded-lg z-50">
-                            <div class="p-2 border-b font-bold flex justify-between">
-                                <span>Notifications</span>
-                                <?php if (is_admin()): ?>
-                                    <button id="add-note-btn" class="text-blue-600 text-sm">＋ Ajouter</button>
-                                <?php endif; ?>
-                            </div>
-                            <div id="notif-list" class="max-h-64 overflow-y-auto"></div>
-                        </div>
-                    </div>
-
-                    <!-- SCAN SERIES -->
-                    <button type="button" id="scan-series" title="Scanner les nouvelles séries"
-                        class="ml-3 p-2 bg-green-600 text-white rounded flex items-center hover:bg-green-700 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18" />
-                        </svg>
-                        Scan
-                    </button>
-                <?php else: ?>
-                    <a href="login.php" class="text-blue-600 hover:underline">Se connecter</a>
-                    <span class="text-gray-400">|</span>
-                    <a href="register.php" class="text-blue-600 hover:underline">S'inscrire</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </header>
 
     <!-- ================= MAIN ================= -->
     <main class="container mx-auto p-3">
+        <div class="mb-3 flex justify-between items-center">
+            <span class="text-gray-500 text-sm">
+                (<?= $totalSeries ?> total • <?= $total ?> filtrées)
+            </span>
 
-        <form method="get"
-            class="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 items-end">
+            <button type="button"
+                id="toggle-filters"
+                class="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                <span id="toggle-text">Filtres</span>
+                <svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+        </div>
 
-            <div>
-                <label class="text-sm text-gray-600">Titre</label>
-                <input name="q" value="<?= e($search) ?>" class="p-2 border rounded w-full">
-            </div>
+        <div id="filters-wrapper" class="transition-all duration-300 overflow-hidden">
+            <form method="get"
+                class="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 items-end">
 
-            <div class="flex flex-col">
-                <label class="text-sm text-gray-600 mb-1">Genres</label>
-                <input id="genre" name="genre" value="<?= e($genre) ?>" placeholder="Genres..." class="p-2 border rounded focus:ring focus:ring-blue-200">
-            </div>
+                <div>
+                    <label class="text-sm text-gray-600">Titre</label>
+                    <input name="q" value="<?= e($search) ?>" class="p-2 border rounded w-full">
+                </div>
 
-            <div>
-                <label class="text-sm text-gray-600">Année</label>
-                <input name="year" type="number" value="<?= $year ?: '' ?>" class="p-2 border rounded w-full">
-            </div>
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-600 mb-1">Genres</label>
+                    <input id="genre" name="genre" value="<?= e($genre) ?>" placeholder="Genres..." class="p-2 border rounded focus:ring focus:ring-blue-200">
+                </div>
 
-            <div class="flex items-center gap-2">
-                <input type="checkbox" name="no_update" value="1" <?= $noUpdate ? 'checked' : '' ?>>
-                <label class="text-sm">Nouveaux en 1er</label>
-            </div>
+                <div>
+                    <label class="text-sm text-gray-600">Année</label>
+                    <input name="year" type="number" value="<?= $year ?: '' ?>" class="p-2 border rounded w-full">
+                </div>
 
-            <div class="flex flex-col gap-2">
-                <button class="p-2 bg-blue-600 text-white rounded">Rechercher</button>
-                <a href="index_series.php"
-                    class="p-2 bg-green-600 text-white rounded text-center">
-                    Réinitialiser
-                </a>
-            </div>
-        </form>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="no_update" value="1" <?= $noUpdate ? 'checked' : '' ?>>
+                    <label class="text-sm">Nouveaux en 1er</label>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <button class="p-2 bg-blue-600 text-white rounded">Rechercher</button>
+                    <a href="index_series.php"
+                        class="p-2 bg-green-600 text-white rounded text-center">
+                        Réinitialiser
+                    </a>
+                </div>
+            </form>
+        </div>
 
         <!-- ================= GRID ================= -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -307,8 +276,7 @@ $series = $stmt->fetchAll();
     <script>
         window.csrfToken = "<?= e($_SESSION['csrf_token']) ?>";
     </script>
-    <script src="assets/js/app_series.js"></script>
-    <script src="assets/js/app.js"></script>
+
     <script>
         const input = document.querySelector('#genre');
         const tagify = new Tagify(input, {
@@ -318,6 +286,32 @@ $series = $stmt->fetchAll();
                 enabled: 1,
                 closeOnSelect: false
             }
+        });
+    </script>
+    <script>
+        const toggleBtn = document.getElementById('toggle-text');
+        const wrapper = document.getElementById('filters-wrapper');
+        const text = document.getElementById('toggle-text');
+        const icon = document.getElementById('toggle-icon');
+
+        let open = false; // ❌ fermé au départ
+
+        toggleBtn.addEventListener('click', () => {
+            open = !open;
+
+            if (open) {
+                wrapper.style.maxHeight = wrapper.scrollHeight + 'px';
+                icon.classList.remove('rotate-180');
+            } else {
+                wrapper.style.maxHeight = '0px';
+                icon.classList.add('rotate-180');
+            }
+        });
+
+        // Init fermé au chargement
+        window.addEventListener('load', () => {
+            wrapper.style.maxHeight = '0px';
+            icon.classList.add('rotate-180');
         });
     </script>
 </body>

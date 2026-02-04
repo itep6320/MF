@@ -53,6 +53,28 @@ if (is_logged_in()) {
     $userNote = get_user_note($pdo, current_user_id(), $id);
 }
 
+// Vérifier si le film est dans les favoris de l'utilisateur
+$isFavorite = false;
+if (is_logged_in()) {
+    $favStmt = $pdo->prepare('SELECT COUNT(*) FROM favoris WHERE utilisateur_id = ? AND film_id = ?');
+    $favStmt->execute([current_user_id(), $id]);
+    $isFavorite = $favStmt->fetchColumn() > 0;
+}
+
+// Récupérer la dernière lecture de ce film par l'utilisateur
+$lastView = null;
+if (is_logged_in()) {
+    $lastViewStmt = $pdo->prepare('
+        SELECT date_lecture 
+        FROM historique_lectures 
+        WHERE utilisateur_id = ? AND film_id = ? 
+        ORDER BY date_lecture DESC 
+        LIMIT 1
+    ');
+    $lastViewStmt->execute([current_user_id(), $id]);
+    $lastView = $lastViewStmt->fetch();
+}
+
 // Générer un token vidéo
 function generate_video_token($userId, $filmId)
 {
@@ -88,57 +110,40 @@ $existingFranchises = $franchisesStmt->fetchAll(PDO::FETCH_COLUMN);
     <link rel="icon" href="assets/img/favicon.ico" type="image/x-icon">
     <title><?= e($film['titre']) ?> — Mes Films</title>
     <link href="assets/css/style.css" rel="stylesheet">
+    <style>
+        /* Style pour l'étoile de favori */
+        .favorite-star {
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.2s ease;
+            display: inline-block;
+            user-select: none;
+        }
+        .favorite-star:hover {
+            transform: scale(1.2);
+        }
+        .favorite-star.is-favorite {
+            color: #fbbf24; /* Jaune */
+        }
+        .favorite-star.not-favorite {
+            color: #d1d5db; /* Gris */
+        }
+    </style>
 </head>
 
+<?php
+$activeMenu = 'films';
+$showScan = true;
+$scanId = 'scan-films';
+$scanTitle = 'Scanner les nouveaux films';
+$scanLabel = 'Scan';
+
+require 'header.php';
+?>
+
+<script src="assets/js/app.js"></script>
+
 <body class="min-h-screen bg-gray-100" data-film-id="<?= $film['id'] ?>">
-    <header class="p-3 bg-white shadow sticky top-0 z-10">
-        <div class="container mx-auto flex items-center justify-between">
-            <h1 class="text-xl font-bold">
-                <a href="index.php">🎬 Mes Films</a>
-            </h1>
-
-            <div class="flex items-center gap-3 text-sm">
-                <?php if (is_logged_in()): ?>
-                    <div class="flex items-center gap-1">
-                        Bonjour <strong><?= e($_SESSION['username']) ?></strong>
-                        <?php if (is_admin()): ?>
-                            <span class="ml-1 px-2 py-0.5 text-xs bg-red-600 text-white rounded-full">admin</span>
-                        <?php endif; ?>
-                    </div>
-                    <span class="text-gray-400">|</span>
-                    <a href="logout.php" class="text-blue-600 hover:underline">Se déconnecter</a>
-
-                    <div id="notif-wrapper" class="inline relative ml-4">
-                        <button id="notif-btn" class="relative">
-                            🔔
-                            <span id="notif-count" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs px-1 hidden"></span>
-                        </button>
-
-                        <div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-white border shadow-lg rounded-lg z-50">
-                            <div class="p-2 border-b font-bold flex justify-between">
-                                <span>Notifications</span>
-                                <?php if (is_admin()): ?>
-                                    <button id="add-note-btn" class="text-blue-600 text-sm">＋ Ajouter</button>
-                                <?php endif; ?>
-                            </div>
-                            <div id="notif-list" class="max-h-64 overflow-y-auto"></div>
-                        </div>
-                    </div>
-                    <button id="scan-films" title="Scanner les nouveaux films"
-                        class="ml-3 p-2 bg-green-600 text-white rounded flex items-center hover:bg-green-700 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18" />
-                        </svg>
-                        Scan
-                    </button>
-                <?php else: ?>
-                    <a href="login.php" class="text-blue-600 hover:underline">Se connecter</a>
-                    <span class="text-gray-400">|</span>
-                    <a href="register.php" class="text-blue-600 hover:underline">S'inscrire</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </header>
 
     <main class="container mx-auto p-3">
         <div class="flex flex-col md:flex-row gap-4">
@@ -206,11 +211,30 @@ $existingFranchises = $franchisesStmt->fetchAll(PDO::FETCH_COLUMN);
 
             <!-- Colonne droite -->
             <div class="flex-1">
-                <h2 class="text-2xl font-bold"><?= e($film['titre']) ?></h2>
+                <div class="flex items-center gap-2 mb-2">
+                    <h2 class="text-2xl font-bold"><?= e($film['titre']) ?></h2>
+                    <?php if (is_logged_in()): ?>
+                        <span 
+                            id="favorite-star" 
+                            class="favorite-star <?= $isFavorite ? 'is-favorite' : 'not-favorite' ?>"
+                            title="<?= $isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris' ?>"
+                            data-film-id="<?= $film['id'] ?>"
+                            data-is-favorite="<?= $isFavorite ? '1' : '0' ?>">
+                            <?= $isFavorite ? '★' : '☆' ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
                 <p class="text-sm text-gray-600"><?= e($film['annee']) ?> •
                     <span id="film-genre"><?= e($film['genre']) ?></span>
                 </p>
-
+                <?php if ($lastView): ?>
+                    <div class="mt-3 p-2 bg-blue-50 border-l-4 border-blue-500 rounded">
+                        <p class="text-sm text-blue-800">
+                            <strong>📅 Dernière visualisation :</strong>
+                            <?= date('d/m/Y à H:i', strtotime($lastView['date_lecture'])) ?>
+                        </p>
+                    </div>
+                <?php endif; ?>
                 <!-- Franchise -->
                 <div class="mt-3">
                     <div class="flex items-center gap-2">
@@ -620,9 +644,7 @@ $existingFranchises = $franchisesStmt->fetchAll(PDO::FETCH_COLUMN);
     <script>
         window.csrfToken = "<?= $_SESSION['csrf_token'] ?>";
     </script>
-    <!-- Charge app.js et gère les comportements (recherche OMDb/TMDb/IMDb + toasts + modal) -->
-    <script src="assets/js/app.js"></script>
-
+  
     <!-- Empêcher que la vidéo continue à télécharger en quittant la page -->
     <script>
         window.addEventListener("beforeunload", function() {
@@ -721,9 +743,58 @@ $existingFranchises = $franchisesStmt->fetchAll(PDO::FETCH_COLUMN);
                     }
                 });
             }
+            
+            // --- Gestion des favoris
+            const favoriteStar = document.getElementById('favorite-star');
+            if (favoriteStar) {
+                favoriteStar.addEventListener('click', function() {
+                    const filmId = this.dataset.filmId;
+                    const isFavorite = this.dataset.isFavorite === '1';
+                    
+                    fetch('toggle_favorite.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `csrf=${encodeURIComponent(csrfToken)}&film_id=${filmId}&action=${isFavorite ? 'remove' : 'add'}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Inverser l'état visuel
+                            if (isFavorite) {
+                                this.textContent = '☆';
+                                this.classList.remove('is-favorite');
+                                this.classList.add('not-favorite');
+                                this.dataset.isFavorite = '0';
+                                this.title = 'Ajouter aux favoris';
+                            } else {
+                                this.textContent = '★';
+                                this.classList.remove('not-favorite');
+                                this.classList.add('is-favorite');
+                                this.dataset.isFavorite = '1';
+                                this.title = 'Retirer des favoris';
+                            }
+                        } else {
+                            alert('Erreur: ' + (data.error || 'Impossible de modifier les favoris'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue');
+                    });
+                });
+            }
         });
     </script>
-
+    <!-- Tracking de visionnage -->
+    <script src="assets/js/video_tracking.js"></script>
+    <script>
+        // Initialiser le tracking pour ce film
+        document.addEventListener('DOMContentLoaded', function() {
+            initVideoTracking('film', <?= (int)$film['id'] ?>, 0.9);
+        });
+    </script>
 </body>
 
 </html>

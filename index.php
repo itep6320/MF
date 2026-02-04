@@ -108,6 +108,18 @@ if (isset($_GET['debug'])) {
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
 </head>
 
+<?php
+$activeMenu = 'films';
+$showScan = true;
+$scanId = 'scan-films';
+$scanTitle = 'Scanner les nouveaux films';
+$scanLabel = 'Scan';
+
+require 'header.php';
+?>
+
+<script src="assets/js/app.js"></script>
+
 <body class="min-h-screen bg-gray-100">
   <!-- Message d'erreur -->
   <?php if (!empty($_SESSION['notice'])): ?>
@@ -120,108 +132,72 @@ if (isset($_GET['debug'])) {
   <?php unset($_SESSION['notice']);
   endif; ?>
 
-    <header class="p-3 bg-white shadow sticky top-0 z-10">
-        <div class="container mx-auto flex items-center justify-between">
-            <h1 class="text-xl font-bold">
-              <a href="index.php">🎬 Mes Films</a>
-                
-                <span class="text-gray-500 text-sm">
-                    (<?= $totalFilms ?> total • <?= $total ?> filtrées)
-                </span>
-            </h1>
-            <h3>
-                <a href="index_series.php">📺 Mes Séries</a>
-            </h3>
-
-      <div class="flex items-center gap-3 text-sm">
-        <?php if (is_logged_in()): ?>
-          <div class="flex items-center gap-1">
-            Bonjour <strong><?= e($_SESSION['username']) ?></strong>
-            <?php if (is_admin()): ?>
-              <span class="ml-1 px-2 py-0.5 text-xs bg-red-600 text-white rounded-full">admin</span>
-            <?php endif; ?>
-          </div>
-          <span class="text-gray-400">|</span>
-          <a href="logout.php" class="text-blue-600 hover:underline">Se déconnecter</a>
-
-          <div id="notif-wrapper" class="inline relative ml-4">
-            <button id="notif-btn" class="relative">
-              🔔
-              <span id="notif-count" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs px-1 hidden"></span>
-            </button>
-
-            <div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-white border shadow-lg rounded-lg z-50">
-              <div class="p-2 border-b font-bold flex justify-between">
-                <span>Notifications</span>
-                <?php if (is_admin()): ?>
-                  <button id="add-note-btn" class="text-blue-600 text-sm">＋ Ajouter</button>
-                <?php endif; ?>
-              </div>
-              <div id="notif-list" class="max-h-64 overflow-y-auto"></div>
-            </div>
-          </div>
-          <button id="scan-films" title="Scanner les nouveaux films"
-            class="ml-3 p-2 bg-green-600 text-white rounded flex items-center hover:bg-green-700 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18" />
-            </svg>
-            Scan
-          </button>
-        <?php else: ?>
-          <a href="login.php" class="text-blue-600 hover:underline">Se connecter</a>
-          <span class="text-gray-400">|</span>
-          <a href="register.php" class="text-blue-600 hover:underline">S'inscrire</a>
-        <?php endif; ?>
-      </div>
-    </div>
-  </header>
-
   <main class="container mx-auto p-3">
-    <form method="get" class="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 items-end">
-      <!-- Recherche par titre -->
-      <div class="flex flex-col">
-        <label class="text-sm text-gray-600 mb-1">Titre</label>
-        <input name="q" value="<?= e($search) ?>" placeholder="Recherche titre..." class="p-2 border rounded focus:ring focus:ring-blue-200">
-      </div>
 
-      <!-- Genres -->
-      <div class="flex flex-col">
-        <label class="text-sm text-gray-600 mb-1">Genres</label>
-        <input id="genre" name="genre" value="<?= e($genreRaw) ?>" placeholder="Genres..." class="p-2 border rounded focus:ring focus:ring-blue-200">
-      </div>
+    <div class="mb-3 flex justify-between items-center">
+      <span class="text-gray-500 text-sm">
+        (<?= $totalFilms ?> total • <?= $total ?> filtrées)
+      </span>
 
-      <!-- Année -->
-      <div class="flex flex-col">
-        <label class="text-sm text-gray-600 mb-1">Année</label>
-        <input name="year" type="number" value="<?= $year ?: '' ?>" placeholder="Année" class="p-2 border rounded focus:ring focus:ring-blue-200">
-      </div>
+      <button type="button"
+        id="toggle-filters"
+        class="text-sm text-blue-600 hover:underline flex items-center gap-1">
+        <span id="toggle-text">Filtres</span>
+        <svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+    </div>
 
-      <!-- Franchise -->
-      <div class="flex flex-col">
-        <label class="text-sm text-gray-600 mb-1">Franchise</label>
-        <input name="franchise" value="<?= e($franchise) ?>" placeholder="Franchise..." class="p-2 border rounded focus:ring focus:ring-blue-200">
-      </div>
+    <div id="filters-wrapper" class="transition-all duration-300 overflow-hidden">
+      <form method="get" class="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 items-end">
+        <!-- Recherche par titre -->
+        <div class="flex flex-col">
+          <label class="text-sm text-gray-600 mb-1">Titre</label>
+          <input name="q" value="<?= e($search) ?>" placeholder="Recherche titre..." class="p-2 border rounded focus:ring focus:ring-blue-200">
+        </div>
 
-      <!-- Films sans mise à jour -->
-      <div class="flex items-center gap-2">
-        <input type="checkbox" name="no_update" value="1" <?= $noUpdate ? 'checked' : '' ?> class="h-4 w-4">
-        <label class="text-sm text-gray-700">Nouveaux en 1er</label>
-      </div>
+        <!-- Genres -->
+        <div class="flex flex-col">
+          <label class="text-sm text-gray-600 mb-1">Genres</label>
+          <input id="genre" name="genre" value="<?= e($genreRaw) ?>" placeholder="Genres..." class="p-2 border rounded focus:ring focus:ring-blue-200">
+        </div>
 
-      <!-- Boutons -->
-      <div class="flex flex-col gap-2">
-        <button style="border-top-width: 2px; border-bottom-width: 2px;"
-          class="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-          Rechercher
-        </button>
+        <!-- Année -->
+        <div class="flex flex-col">
+          <label class="text-sm text-gray-600 mb-1">Année</label>
+          <input name="year" type="number" value="<?= $year ?: '' ?>" placeholder="Année" class="p-2 border rounded focus:ring focus:ring-blue-200">
+        </div>
 
-        <a href="index.php"
-          style="border-top-width: 2px; border-bottom-width: 2px;"
-          class="p-2 bg-green-600 text-white rounded hover:bg-blue-700 transition flex items-center justify-center text-center">
-          Réinitialiser
-        </a>
-      </div>
-    </form>
+        <!-- Franchise -->
+        <div class="flex flex-col">
+          <label class="text-sm text-gray-600 mb-1">Franchise</label>
+          <input name="franchise" value="<?= e($franchise) ?>" placeholder="Franchise..." class="p-2 border rounded focus:ring focus:ring-blue-200">
+        </div>
+
+        <!-- Films sans mise à jour -->
+        <div class="flex items-center gap-2">
+          <input type="checkbox" name="no_update" value="1" <?= $noUpdate ? 'checked' : '' ?> class="h-4 w-4">
+          <label class="text-sm text-gray-700">Nouveaux en 1er</label>
+        </div>
+
+        <!-- Boutons -->
+        <div class="flex flex-col gap-2">
+          <button style="border-top-width: 2px; border-bottom-width: 2px;"
+            class="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+            Rechercher
+          </button>
+
+          <a href="index.php"
+            style="border-top-width: 2px; border-bottom-width: 2px;"
+            class="p-2 bg-green-600 text-white rounded hover:bg-blue-700 transition flex items-center justify-center text-center">
+            Réinitialiser
+          </a>
+        </div>
+      </form>
+    </div>
 
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
       <?php foreach ($films as $film): ?>
@@ -339,7 +315,7 @@ if (isset($_GET['debug'])) {
   <script>
     window.csrfToken = "<?= e($_SESSION['csrf_token']) ?>";
   </script>
-  <script src="assets/js/app.js"></script>
+
   <script>
     const input = document.querySelector('#genre');
     const tagify = new Tagify(input, {
@@ -351,6 +327,33 @@ if (isset($_GET['debug'])) {
       }
     });
   </script>
+  <script>
+    const toggleBtn = document.getElementById('toggle-text');
+    const wrapper = document.getElementById('filters-wrapper');
+    const text = document.getElementById('toggle-text');
+    const icon = document.getElementById('toggle-icon');
+
+    let open = false; // ❌ fermé au départ
+
+    toggleBtn.addEventListener('click', () => {
+      open = !open;
+
+      if (open) {
+        wrapper.style.maxHeight = wrapper.scrollHeight + 'px';
+        icon.classList.remove('rotate-180');
+      } else {
+        wrapper.style.maxHeight = '0px';
+        icon.classList.add('rotate-180');
+      }
+    });
+
+    // Init fermé au chargement
+    window.addEventListener('load', () => {
+      wrapper.style.maxHeight = '0px';
+      icon.classList.add('rotate-180');
+    });
+  </script>
+
 </body>
 
 </html>

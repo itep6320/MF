@@ -31,6 +31,30 @@ $episodesStmt = $pdo->prepare('SELECT * FROM episodes WHERE serie_id = ? ORDER B
 $episodesStmt->execute([$id]);
 $episodes = $episodesStmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Récupérer les dernières lectures pour tous les épisodes de cette série
+$lastViews = [];
+if (is_logged_in()) {
+    $lastViewsStmt = $pdo->prepare('
+        SELECT 
+            hl.episode_id,
+            hl.date_lecture,
+            COUNT(*) as view_count
+        FROM historique_lectures hl
+        JOIN episodes e ON hl.episode_id = e.id
+        WHERE hl.utilisateur_id = ? AND e.serie_id = ?
+        GROUP BY hl.episode_id
+        HAVING hl.date_lecture = MAX(hl.date_lecture)
+    ');
+    $lastViewsStmt->execute([current_user_id(), $id]);
+
+    foreach ($lastViewsStmt->fetchAll() as $view) {
+        $lastViews[$view['episode_id']] = [
+            'date' => $view['date_lecture'],
+            'count' => $view['view_count']
+        ];
+    }
+}
+
 // Regroupement par saison
 $saisons = [];
 foreach ($episodes as $ep) {
@@ -82,22 +106,18 @@ if (!empty($serie['chemin'])) {
 <script src="assets/js/app_series.js"></script>
 <script src="assets/js/episode_search.js"></script>
 
-<body class="bg-gray-100 min-h-screen">
+<?php
+$activeMenu = 'series';
+$showScan = true;
+$scanId = 'scan-series';
+$scanTitle = 'Scanner les nouvelles séries';
+$scanLabel = 'Scan';
 
-    <header class="bg-white shadow sticky top-0 z-20">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold">
-                <a href="index_series.php">📺 Mes Séries</a>
-            </h1>
-            <div class="text-sm">
-                <?php if (is_logged_in()): ?>
-                    Bonjour <strong><?= e($_SESSION['username']) ?></strong>
-                    <?php if (is_admin()): ?><span class="ml-1 px-2 py-0.5 text-xs bg-red-600 text-white rounded">admin</span><?php endif; ?>
-                    | <a href="logout.php" class="text-blue-600">Se déconnecter</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </header>
+require 'header.php';
+?>
+<script src="assets/js/app.js"></script>
+
+<body class="bg-gray-100 min-h-screen">
 
     <main class="container mx-auto p-4">
         <div class="flex flex-col md:flex-row gap-6">
@@ -198,37 +218,48 @@ if (!empty($serie['chemin'])) {
                         <div class="hidden">
                             <?php foreach ($eps as $ep): ?>
                                 <?php
-                                $videoPath = $ep['chemin'] ?? '';
-                                $mime = @mime_content_type($videoPath);
-                                $token = generate_episode_video_token(current_user_id(), $ep['id']);
-                                $canStream = false;
-
-                                if ($videoPath && file_exists($videoPath)) {
-                                    $mime = @mime_content_type($videoPath);
-                                    $canStream = ($mime === 'video/mp4');
-                                }
+                                $exists = (bool)$ep['fichier_existe'];
+                                $type = $ep['video_type'] ?? '';
+                                $token  = generate_episode_video_token(current_user_id(), $ep['id']);
                                 ?>
+
+
                                 <div class="border-t p-3 hover:bg-gray-50" data-episode-id="<?= $ep['id'] ?>">
-                                    <div class="flex justify-between items-start gap-3">
-                                        <div class="flex-1">
-                                            <div class="font-medium episode-titre"
-                                                data-episode-id="<?= $ep['id'] ?>"
+                                    <div class="flex gap-4">
+
+                                        <!-- CONTENU (PREND TOUT L'ESPACE) -->
+                                        <div class="flex-1 min-w-0">
+                                            <div
+                                                class="font-medium episode-titre break-words"
                                                 contenteditable="true"
-                                                spellcheck="false"><?= e(cleanEpisodeTitle($ep)) ?></div>
-                                            <div class="text-sm text-gray-600 mt-1 episode-description"
-                                                data-episode-id="<?= $ep['id'] ?>"
-                                                contenteditable="true"
-                                                spellcheck="false"><?= e($ep['description_episode'] ?: 'Aucune description') ?></div>
-                                            <!-- Formate du fichier -->
-                                            <div class="mt-1 flex gap-3 text-sm">
-                                                <span class="format-badge"><?= htmlspecialchars($mime) ?></span>
+                                                spellcheck="false">
+                                                <?= e(cleanEpisodeTitle($ep)) ?>
                                             </div>
+
+                                            <div
+                                                class="text-sm text-gray-600 mt-1 episode-description break-words">
+                                                <?= e($ep['description_episode'] ?: 'Aucune description') ?>
+                                            </div>
+
+
+                                            <?php if ($type): ?>
+                                                <span class="inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-200 text-gray-700 uppercase">
+                                                    <?= e($type) ?>
+                                                </span>
+                                            <?php endif; ?>
+
+                                            <?php if (isset($lastViews[$ep['id']])): ?>
+                                                <span class="text-xs text-green-600">
+                                                    📅 Vu le <?= date('d/m/Y à H:i', strtotime($lastViews[$ep['id']]['date'])) ?>
+                                                </span>
+                                            <?php endif; ?>
                                         </div>
 
-                                        <div class="mt-1 flex gap-3 text-sm">
-                                            <?php if ($videoPath && file_exists($videoPath)): ?>
+                                        <!-- ACTIONS (COLONNE FIXE) -->
+                                        <div class="flex flex-col gap-2 text-sm whitespace-nowrap">
+                                            <?php if ($exists): ?>
 
-                                                <?php if ($mime === 'video/mp4'): ?>
+                                                <?php if ($type === 'mp4'): ?>
                                                     <a href="stream_episode_mp4.php?id=<?= $ep['id'] ?>" target="_blank"
                                                         class="text-blue-600 hover:underline">
                                                         ▶️ Regarder
@@ -240,7 +271,6 @@ if (!empty($serie['chemin'])) {
                                                     </a>
                                                 <?php endif; ?>
 
-                                                <!-- Téléchargement -->
                                                 <a href="download_episode.php?id=<?= $ep['id'] ?>"
                                                     class="text-green-600 hover:underline">
                                                     ⬇️ Télécharger
@@ -249,25 +279,24 @@ if (!empty($serie['chemin'])) {
                                             <?php else: ?>
                                                 <span class="text-gray-400 italic">Fichier absent</span>
                                             <?php endif; ?>
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            class="btn-search-episode px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 flex-shrink-0"
-                                            data-episode-id="<?= $ep['id'] ?>"
-                                            data-saison="<?= $s ?>"
-                                            data-numero="<?= $ep['numero_episode'] ?>"
-                                            title="Mettre à jour depuis TMDb">
-                                            🔍 MAJ
-                                        </button>
-                                        <?php if (is_admin()): ?>
                                             <button
                                                 type="button"
-                                                class="btn-edit-episode px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-                                                data-episode-id="<?= $ep['id'] ?>">
-                                                ✏️ Éditer
+                                                class="btn-search-episode px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 flex-shrink-0"
+                                                data-episode-id="<?= $ep['id'] ?>"
+                                                data-saison="<?= $s ?>"
+                                                data-numero="<?= $ep['numero_episode'] ?>"
+                                                title="Mettre à jour depuis TMDb">
+                                                🔍 MAJ
                                             </button>
-                                        <?php endif; ?>
+                                            <?php if (is_admin()): ?>
+                                                <button
+                                                    type="button"
+                                                    class="btn-edit-episode px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
+                                                    data-episode-id="<?= $ep['id'] ?>">
+                                                    ✏️ Éditer
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
 
                                     </div>
                                 </div>
@@ -421,6 +450,89 @@ if (!empty($serie['chemin'])) {
             deleteSerieModal.addEventListener('click', (e) => {
                 if (e.target === deleteSerieModal) {
                     deleteSerieModal.classList.add('hidden');
+                }
+            });
+        }
+
+        // 🆕 Gestion du bouton de scan des séries
+        const scanSeriesBtn = document.getElementById('scan-series');
+        if (scanSeriesBtn) {
+            scanSeriesBtn.addEventListener('click', async () => {
+                if (!confirm('Lancer le scan des séries ? Cela peut prendre plusieurs minutes.')) {
+                    return;
+                }
+
+                // Créer la modal de résultats
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+                        <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
+                            <h3 class="text-xl font-bold">📺 Scan des séries en cours...</h3>
+                            <button id="close-scan-modal" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                        </div>
+                        <div class="p-6 overflow-y-auto flex-1">
+                            <pre id="scan-output" class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm whitespace-pre-wrap min-h-[400px]">⏳ Initialisation du scan...</pre>
+                        </div>
+                        <div class="p-4 border-t bg-gray-50 rounded-b-lg">
+                            <button id="reload-page-btn" class="w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:bg-gray-400" disabled>
+                                🔄 Recharger la page
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                const output = document.getElementById('scan-output');
+                const closeBtn = document.getElementById('close-scan-modal');
+                const reloadBtn = document.getElementById('reload-page-btn');
+
+                // Fermer la modal
+                closeBtn.addEventListener('click', () => {
+                    modal.remove();
+                });
+
+                // Recharger la page
+                reloadBtn.addEventListener('click', () => {
+                    location.reload();
+                });
+
+                try {
+                    const response = await fetch('scan_series.php');
+
+                    if (!response.ok) {
+                        throw new Error(`Erreur HTTP ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullText = '';
+
+                    // Lire le flux progressivement
+                    while (true) {
+                        const {
+                            done,
+                            value
+                        } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, {
+                            stream: true
+                        });
+                        fullText += chunk;
+                        output.textContent = fullText;
+
+                        // Auto-scroll vers le bas
+                        output.scrollTop = output.scrollHeight;
+                    }
+
+                    // Activer le bouton de rechargement
+                    reloadBtn.disabled = false;
+                    reloadBtn.textContent = '✅ Scan terminé - Recharger la page';
+
+                } catch (error) {
+                    output.textContent = `❌ Erreur lors du scan :\n${error.message}`;
+                    console.error('Erreur scan:', error);
                 }
             });
         }

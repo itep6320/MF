@@ -180,3 +180,52 @@ window.updateAllEpisodesInSeason = async function (saison) {
     removeProgressBar(progressDiv);
     alert('✅ Mise à jour terminée');
 };
+
+/**
+ * Crée une barre de progression
+ */
+function createProgressBar(total) {
+    const container = document.createElement('div');
+    container.id = 'episode-progress';
+    container.style.position = 'fixed';
+    container.style.bottom = '20px';
+    container.style.right = '20px';
+    container.style.width = '300px';
+    container.style.background = '#fff';
+    container.style.border = '1px solid #ccc';
+    container.style.padding = '10px';
+    container.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+    container.style.zIndex = 9999;
+
+    container.innerHTML = `
+        <div id="progress-text" style="margin-bottom:6px;font-size:14px;">
+            Démarrage…
+        </div>
+        <div style="background:#eee;height:10px;border-radius:5px;overflow:hidden;">
+            <div id="progress-bar" style="width:0%;height:100%;background:#3b82f6;"></div>
+        </div>
+    `;
+
+    document.body.appendChild(container);
+    return container;
+}
+
+/**
+ * Met à jour la barre de progression
+ */
+function updateProgressBar(container, current, total, label = '') {
+    const percent = Math.round((current / total) * 100);
+    container.querySelector('#progress-bar').style.width = percent + '%';
+    container.querySelector('#progress-text').textContent =
+        `⏳ ${current}/${total} — ${label}`;
+}
+
+/**
+ * Supprime la barre de progression
+ */
+function removeProgressBar(container) {
+    if (container && container.parentNode) {
+        container.parentNode.removeChild(container);
+    }
+}
+

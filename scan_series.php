@@ -8,6 +8,12 @@ if (!is_logged_in() || !is_admin()) {
     exit;
 }
 
+// ⚡ Forcer affichage immédiat
+@ini_set('output_buffering', 'off');
+@ini_set('zlib.output_compression', 'Off');
+while (ob_get_level()) ob_end_flush();
+ob_implicit_flush(true);
+
 header('Content-Type: text/plain; charset=utf-8');
 
 // ⚙️ Chargement du chemin depuis .env
@@ -22,6 +28,11 @@ $rootPath = rtrim($env['SERIES_PATH'] ?? '/volume2/Séries', '/');
 $videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'm4v'];
 
 // Fonctions utilitaires
+function getVideoType(string $filename): ?string
+{
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    return in_array($ext, ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'm4v']) ? $ext : null;
+}
 function isVideoFile(string $file): bool
 {
     return preg_match('/\.(mp4|mkv|avi|mov|wmv|m4v)$/i', $file);
@@ -77,8 +88,8 @@ function cleanEpisodeTitle(string $filename): string
 // --------------------------------------------------
 // Chargement de l'existant
 // --------------------------------------------------
-
 echo "=== 📺 SCAN DES SÉRIES ===\n";
+flush();
 
 // Séries existantes indexées PAR CHEMIN
 $existingSeriesStmt = $pdo->query('SELECT id, titre, chemin FROM series');
@@ -125,7 +136,8 @@ foreach ($seriesIterator as $serieDir) {
     $seriePath  = $serieDir->getPathname();
     $serieTitle = $serieDir->getFilename();
 
-    echo "\n🔍 Série : $serieTitle\n";
+    // echo "\n🔍 Série : $serieTitle\n";
+    // flush();
 
     // ➤ Série existante ou nouvelle ?
     if (isset($existingSeriesByPath[$seriePath])) {
@@ -168,6 +180,19 @@ foreach ($seriesIterator as $serieDir) {
         // Épisode déjà en base
         if (isset($existingEpisodesByPath[$fullPath])) {
             $stats['episodes_ignores']++;
+            $videoType = getVideoType($file->getFilename());
+
+            $stmt = $pdo->prepare(
+                'UPDATE episodes
+                        SET fichier_existe = 1, video_type = ?
+                         WHERE id = ?'
+            );
+            $stmt->execute([
+                $videoType,
+                $existingEpisodesByPath[$fullPath]
+            ]);
+
+            $stats['episodes_ignores']++;
             continue;
         }
 
@@ -191,10 +216,13 @@ foreach ($seriesIterator as $serieDir) {
             $titreEp = $titreClean !== '' ? $titreClean : "Épisode {$episode}";
         }
 
+        $videoType = getVideoType($file->getFilename());
+        $fichierExiste = file_exists($fullPath) ? 1 : 0;
+
         $stmt = $pdo->prepare(
             'INSERT INTO episodes
-             (serie_id, saison, numero_episode, chemin, titre_episode)
-             VALUES (?, ?, ?, ?, ?)'
+     (serie_id, saison, numero_episode, chemin, titre_episode, fichier_existe, video_type)
+     VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
 
         $stmt->execute([
@@ -202,7 +230,9 @@ foreach ($seriesIterator as $serieDir) {
             $saison,
             $episode,
             $fullPath,
-            $titreEp
+            $titreEp,
+            $fichierExiste,
+            $videoType
         ]);
 
         $stats['episodes_ajoutes']++;
@@ -241,10 +271,11 @@ foreach ($existingEpisodesByPath as $path => $episodeId) {
 // --------------------------------------------------
 // Résumé
 // --------------------------------------------------
-
 echo "\n=== ✅ SCAN TERMINÉ ===\n";
+flush();
 echo "Séries ajoutées     : {$stats['series_ajoutees']}\n";
 echo "Séries existantes   : {$stats['series_existantes']}\n";
 echo "Épisodes ajoutés    : {$stats['episodes_ajoutes']}\n";
 echo "Épisodes ignorés    : {$stats['episodes_ignores']}\n";
 echo "Épisodes supprimés  : {$stats['episodes_supprimes']}\n";
+flush();

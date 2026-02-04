@@ -1,30 +1,5 @@
 window.isEditingEpisode = false;
 
-/* ======================================================
-   GESTION DU SCAN DES FILMS (Folder)
-====================================================== */
-document.addEventListener('DOMContentLoaded', function () {
-    const btn = document.getElementById('scan-series');
-    if (btn) {
-        btn.addEventListener('click', function () {
-            btn.disabled = true;
-            btn.textContent = 'Scan en cours...';
-            fetch('scan_series.php')
-                .then(res => res.text())
-                .then(data => {
-                    alert(data); // ou afficher dans un div dédié
-                    btn.textContent = 'Scan';
-                    btn.disabled = false;
-                })
-                .catch(err => {
-                    alert('Erreur lors du scan.');
-                    btn.textContent = 'Scan';
-                    btn.disabled = false;
-                });
-        });
-    }
-});
-
 // app_series.js - Gestionnaire principal pour la recherche de séries
 document.addEventListener('DOMContentLoaded', function () {
     console.log("📺 Initialisation de la recherche de séries");
